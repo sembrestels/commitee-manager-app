@@ -4,7 +4,7 @@ import "@aragon/os/contracts/apps/AragonApp.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
 import "@aragon/apps-token-manager/contracts/TokenManager.sol";
 
-//import "@aragon/apps-vault/contracts/Vault.sol";
+import "@aragon/apps-voting/contracts/Voting.sol";
 import "@aragon/os/contracts/apm/APMNamehash.sol";
 
 import "@aragon/os/contracts/kernel/Kernel.sol";
@@ -16,6 +16,7 @@ import "@aragon/os/contracts/lib/ens/PublicResolver.sol";
 import "@aragon/os/contracts/evmscript/IEVMScriptRegistry.sol"; // needed for EVMSCRIPT_REGISTRY_APP_ID
 
 import "@aragon/apps-shared-minime/contracts/MiniMeToken.sol";
+
 
 contract CommitteeManager is AragonApp, APMNamehash {
     using SafeMath for uint256;
@@ -41,7 +42,6 @@ contract CommitteeManager is AragonApp, APMNamehash {
 
     //State
     ENS public ens;
-    Kernel kernel;
     uint64 constant PCT = 10 ** 16;
 
     mapping(address => Committee) committees;
@@ -55,50 +55,50 @@ contract CommitteeManager is AragonApp, APMNamehash {
         initialize();
         //TODO need to take this address out.
         ens = ENS(0x5f6f7e8cc7346a11ca2def8f827b7a0b612c56a1);
-        kernel = Kernel(kernel());
     }
 
     function createCommittee(bytes32 _name, string _description, bytes32 _committeeTokenAcronym) external auth(CREATE_COMMITTEE_ROLE) {
-        setCommitteeApps(_name, _committeeTokenAcronym);
-        committees[name] = Committee(_name, _description);
+        address tmAddress;
+        address vAddress;
+        (tmAddress,vAddress) = setCommitteeApps(_name, _committeeTokenAcronym);
+        committees[tmAddress] = Committee(_name, _description, tmAddress, vAddress);
     }
 
 //    function removeCommittee(bytes32 name) external auth(REMOVE_COMMITTEE_ROLE) {
 //        delete committees[name];
 //    }
 
-    function addMemberToCommittee(address _key /*need to review. How do we get tokenManager addresss*/, address _member) external auth(EDIT_COMMITTEE_ROLE) {
+    // function addMemberToCommittee(address _key /*need to review. How do we get tokenManager addresss*/, address _member) external auth(EDIT_COMMITTEE_ROLE) {
+    //
+    // }
+    //
+    // function removeMemberFromCommittee(address _key, address _member) external auth(EDIT_COMMITTEE_ROLE) {
+    //
+    // }
+    //
+    // function addPermissionToCommittee(address _key, bytes32 _role, address _app) external auth(EDIT_COMMITTEE_ROLE) {
+    //     //acl.createPermission(address entity, address app, bytes32 role, address manager)
+    //     //...
+    // }
+    //
+    // function removePermissionFromCommittee(address _key, bytes32 _role, address _app) external auth(EDIT_COMMITTEE_ROLE) {
+    //     //acl.revokePermission(address entity, address app, bytes32 role)
+    //     //...
+    // }
+    //
+    // function modifyCommitee(address _key, string _description) external auth(EDIT_COMMITTEE_ROLE) {
+    //     //...
+    // }
 
-    }
-
-    function removeMemberFromCommittee(address _key, address _member) external auth(EDIT_COMMITTEE_ROLE) {
-
-    }
-
-    function addPermissionToCommittee(address _key, bytes32 _role, address _app) external auth(EDIT_COMMITTEE_ROLE) {
-        //acl.createPermission(address entity, address app, bytes32 role, address manager)
-        //...
-    }
-
-    function removePermissionFromCommittee(address _key, bytes32 _role, address _app) external auth(EDIT_COMMITTEE_ROLE) {
-        //acl.revokePermission(address entity, address app, bytes32 role)
-        //...
-    }
-
-    function modifyCommitee(address _key, string _description) external auth(EDIT_COMMITTEE_ROLE) {
-        //...
-    }
-
-    function setCommitteeApps(bytes32 _committeeName, bytes32 _committeeTokenAcronym) internal returns (
-        address tmAddress,
-        address vAddress) {
-        ACL acl = ACL(kernel.acl());
+    function setCommitteeApps(bytes32 _committeeName, bytes32 _committeeTokenAcronym) internal returns (address tmAddress, address vAddress) {
+        Kernel dao = Kernel(kernel());
+        ACL acl = ACL(dao.acl());
         bytes32 appId = apmNamehash("token-manager");
         address appBase = latestVersionAppBase(appId);
         MiniMeTokenFactory tokenFactory = new MiniMeTokenFactory();
         MiniMeToken token = tokenFactory.createCloneToken(MiniMeToken(0), 0, "Membership Commitee", 0, "MC", true);
 
-        tmAddress = kernel.newAppInstance(appId, appBase);
+        tmAddress = dao.newAppInstance(appId, appBase);
 
         TokenManager tokenManager = TokenManager(tmAddress);
         token.changeController(tokenManager);
@@ -108,7 +108,7 @@ contract CommitteeManager is AragonApp, APMNamehash {
         appId = apmNamehash("voting");
         appBase = latestVersionAppBase(appId);
 
-        vAddress = kernel.newAppInstance(appId, appBase);
+        vAddress = dao.newAppInstance(appId, appBase);
         Voting voting = Voting(vAddress);
         voting.initialize(token, 50 * PCT, 20 * PCT, 1 days);
         //TODO complete voting logic.

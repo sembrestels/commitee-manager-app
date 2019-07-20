@@ -1,13 +1,18 @@
 {
   "roles": [
     {
-      "name": "Increment the counter",
-      "id": "INCREMENT_ROLE",
+      "name": "Create a Committee",
+      "id": "CREATE_COMMITTEE_ROLE",
       "params": []
     },
     {
-      "name": "Decrement the counter",
-      "id": "DECREMENT_ROLE",
+      "name": "Edit a Committee",
+      "id": "EDIT_COMMITTEE_ROLE",
+      "params": []
+    },
+    {
+      "name": "Delete a Committee",
+      "id": "DELETE_COMMITTEE_ROLE",
       "params": []
     }
   ],
@@ -29,5 +34,5 @@
       "network": "mainnet"
     }
   },
-  "path": "contracts/CounterApp.sol"
+  "path": "contracts/CommitteeManager.sol"
 }
